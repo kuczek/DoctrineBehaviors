@@ -2,6 +2,7 @@
 
 namespace Knp\DoctrineBehaviors\DBAL\Types;
 
+use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Knp\DoctrineBehaviors\ORM\Geocodable\Type\Point;
@@ -26,6 +27,8 @@ class PointType extends Type
      *
      * @param array            $fieldDeclaration The field declaration.
      * @param AbstractPlatform $platform         The currently used database platform.
+     *
+     * @return string
      */
     public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
     {
@@ -63,6 +66,44 @@ class PointType extends Type
             return;
         }
 
-        return sprintf('(%F,%F)', $value->getLatitude(), $value->getLongitude());
+        if ($platform instanceof MySqlPlatform) {
+            $format = "POINT(%F %F)";
+        } else {
+            $format = "(%F, %F)";
+        }
+
+        return sprintf($format, $value->getLatitude(), $value->getLongitude());
+    }
+
+    /**
+     * Does working with this column require SQL conversion functions?
+     *
+     * This is a metadata function that is required for example in the ORM.
+     * Usage of {@link convertToDatabaseValueSQL} and
+     * {@link convertToPHPValueSQL} works for any type and mostly
+     * does nothing. This method can additionally be used for optimization purposes.
+     *
+     * @return boolean
+     */
+    public function canRequireSQLConversion()
+    {
+        return true;
+    }
+
+    /**
+     * Modifies the SQL expression (identifier, parameter) to convert to a database value.
+     *
+     * @param string                                    $sqlExpr
+     * @param \Doctrine\DBAL\Platforms\AbstractPlatform $platform
+     *
+     * @return string
+     */
+    public function convertToDatabaseValueSQL($sqlExpr, AbstractPlatform $platform)
+    {
+        if ($platform instanceof MySqlPlatform) {
+            return sprintf('PointFromText(%s)', $sqlExpr);
+        } else {
+            return parent::convertToDatabaseValue($sqlExpr, $platform);
+        }
     }
 }
