@@ -23,35 +23,36 @@ class GeocodableTest extends \PHPUnit_Framework_TestCase
     {
         $em = new EventManager;
 
-        $em->addEventSubscriber(new \Knp\DoctrineBehaviors\ORM\Geocodable\GeocodableSubscriber(
-            new ClassAnalyzer(),
-            false,
-            'Knp\DoctrineBehaviors\Model\Geocodable\Geocodable',
-            function($entity) {
-                if ($location = $entity->getLocation()) {
-                    return $location;
-                }
+        $em->addEventSubscriber(
+            new \Knp\DoctrineBehaviors\ORM\Geocodable\GeocodableSubscriber(
+                new ClassAnalyzer(),
+                false,
+                'Knp\DoctrineBehaviors\Model\Geocodable\Geocodable',
+                function ($entity) {
+                    if ($location = $entity->getLocation()) {
+                        return $location;
+                    }
 
-                return Point::fromArray([
-                    'longitude' => 47.7,
-                    'latitude'  => 7.9
-                ]);
-            }
-        ));
+                    return Point::fromArray(
+                        [
+                            'longitude' => 47.7,
+                            'latitude' => 7.9
+                        ]
+                    );
+                }
+            )
+        );
 
         return $em;
     }
 
     public function setUp()
     {
-        $em = $this->getEntityManager(null, null, [
-            'driver' => 'pdo_pgsql',
-            'dbname' => 'orm_behaviors_test',
-        ]);
+        $em = $this->getDBEngineEntityManager();
 
-        $nantes  = new \BehaviorFixtures\ORM\GeocodableEntity(47.218635,  -1.544266);
+        $nantes = new \BehaviorFixtures\ORM\GeocodableEntity(47.218635, -1.544266);
         $nantes->setTitle('Nantes');
-        $paris   = new \BehaviorFixtures\ORM\GeocodableEntity(48.858842,   2.355194);
+        $paris = new \BehaviorFixtures\ORM\GeocodableEntity(48.858842, 2.355194);
         $paris->setTitle('Paris');
         $newYork = new \BehaviorFixtures\ORM\GeocodableEntity(40.742786, -73.989272);
         $newYork->setTitle('New-York');
@@ -85,10 +86,12 @@ class GeocodableTest extends \PHPUnit_Framework_TestCase
      */
     public function testFindByDistance()
     {
-        $em = $this->getEntityManager(null, null, [
-            'driver' => 'pdo_pgsql',
-            'dbname' => 'orm_behaviors_test',
-        ]);
+        if (getenv("DB") == "mysql") {
+            $this->markTestSkipped("findByDistance does not work with MYSQL");
+            return null;
+        }
+
+        $em = $this->getDBEngineEntityManager();
 
         $repo = $em->getRepository('BehaviorFixtures\ORM\GeocodableEntity');
 
@@ -109,5 +112,29 @@ class GeocodableTest extends \PHPUnit_Framework_TestCase
 
         $cities = $repo->findByDistance(new Point(47.896319, 7.352943), 6223000);
         $this->assertCount(3, $cities, 'Paris, Nantes and New-York are less than 6223 km far from Reguisheim');
+    }
+
+    private function getDBEngineEntityManager()
+    {
+        if (getenv("DB") == "pgsql") {
+            return $this->getEntityManager(
+                null,
+                null,
+                [
+                    'driver' => 'pdo_pgsql',
+                    'dbname' => 'orm_behaviors_test',
+                ]
+            );
+        } else {
+            return $this->getEntityManager(
+                null,
+                null,
+                [
+                    'driver' => 'pdo_mysql',
+                    'dbname' => 'orm_behaviors_test',
+                    'user' => 'root'
+                ]
+            );
+        }
     }
 }

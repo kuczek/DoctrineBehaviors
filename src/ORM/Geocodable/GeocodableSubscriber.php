@@ -21,6 +21,7 @@ use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use Doctrine\ORM\Event\LoadClassMetadataEventArgs;
 use Doctrine\ORM\Event\LifecycleEventArgs;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Doctrine\DBAL\Types\Type;
 
 use Doctrine\Common\EventSubscriber,
@@ -41,7 +42,10 @@ class GeocodableSubscriber extends AbstractSubscriber
     private $geocodableTrait;
 
     /**
-     * @param callable
+     * @param \Knp\DoctrineBehaviors\Reflection\ClassAnalyzer $classAnalyzer
+     * @param                                                 $isRecursive
+     * @param                                                 $geocodableTrait
+     * @param callable                                        $geolocationCallable
      */
     public function __construct(ClassAnalyzer $classAnalyzer, $isRecursive, $geocodableTrait, callable $geolocationCallable = null)
     {
@@ -65,6 +69,7 @@ class GeocodableSubscriber extends AbstractSubscriber
         }
 
         if ($this->isGeocodable($classMetadata)) {
+            $engine = "pgsql";
 
             if (!Type::hasType('point')) {
                 Type::addType('point', 'Knp\DoctrineBehaviors\DBAL\Types\PointType');
@@ -74,7 +79,9 @@ class GeocodableSubscriber extends AbstractSubscriber
             $con = $em->getConnection();
 
             // skip non-postgres platforms
-            if (!$con->getDatabasePlatform() instanceof PostgreSqlPlatform) {
+            if (!$con->getDatabasePlatform() instanceof PostgreSqlPlatform &&
+                !$con->getDatabasePlatform() instanceof MySqlPlatform)
+            {
                 return;
             }
 
@@ -85,9 +92,13 @@ class GeocodableSubscriber extends AbstractSubscriber
 
             $con->getDatabasePlatform()->registerDoctrineTypeMapping('point', 'point');
 
-            $em->getConfiguration()->addCustomNumericFunction(
-                'DISTANCE', 'Knp\DoctrineBehaviors\ORM\Geocodable\Query\AST\Functions\DistanceFunction'
-            );
+
+            if ($con->getDatabasePlatform() instanceof PostgreSqlPlatform) {
+                $em->getConfiguration()->addCustomNumericFunction(
+                    'DISTANCE',
+                    'Knp\DoctrineBehaviors\ORM\Geocodable\Query\AST\Functions\DistanceFunction'
+                );
+            }
 
             $classMetadata->mapField([
                 'fieldName'  => 'location',
