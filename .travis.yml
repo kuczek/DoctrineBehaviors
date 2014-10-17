@@ -3,6 +3,8 @@ language: php
 php:
   - 5.4
   - 5.5
+  - hhvm
+  - hhvm-nightly
 
 env:
   - DOCTRINE_COMMON_VERSION="~2.2.0"
