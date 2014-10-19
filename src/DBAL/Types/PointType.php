@@ -46,10 +46,16 @@ class PointType extends Type
     public function convertToPHPValue($value, AbstractPlatform $platform)
     {
         if (!$value) {
-            return;
+            return null;
         }
 
-        return Point::fromString($value);
+        if ($platform instanceof MySqlPlatform) {
+            $data = sscanf($value, 'POINT(%f %f)');
+        } else {
+            $data = sscanf($value, "(%f,%f)");
+        }
+
+        return new Point($data[0], $data[1]);
     }
 
     /**
@@ -63,7 +69,7 @@ class PointType extends Type
     public function convertToDatabaseValue($value, AbstractPlatform $platform)
     {
         if (!$value) {
-            return;
+            return null;
         }
 
         if ($platform instanceof MySqlPlatform) {
@@ -103,7 +109,22 @@ class PointType extends Type
         if ($platform instanceof MySqlPlatform) {
             return sprintf('PointFromText(%s)', $sqlExpr);
         } else {
-            return parent::convertToDatabaseValue($sqlExpr, $platform);
+            return parent::convertToDatabaseValueSQL($sqlExpr, $platform);
+        }
+    }
+
+    /**
+     * @param string                                    $sqlExpr
+     * @param \Doctrine\DBAL\Platforms\AbstractPlatform $platform
+     *
+     * @return string
+     */
+    public function convertToPHPValueSQL($sqlExpr, $platform)
+    {
+        if ($platform instanceof MySqlPlatform) {
+            return sprintf('AsText(%s)', $sqlExpr);
+        } else {
+            return parent::convertToPHPValueSQL($sqlExpr, $platform);
         }
     }
 }

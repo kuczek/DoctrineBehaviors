@@ -6,10 +6,10 @@ php:
   - 5.6
 
 env:
-  - DOCTRINE_COMMON_VERSION="~2.2.0" DB=mysql
-  - DOCTRINE_COMMON_VERSION="~2.3.0" DB=mysql
-  - DOCTRINE_COMMON_VERSION="~2.4.0" DB=mysql
-  - DOCTRINE_COMMON_VERSION="dev-master" DB=mysql
+  - DOCTRINE_COMMON_VERSION="~2.2.0" DB=mysql DB_USER=root
+  - DOCTRINE_COMMON_VERSION="~2.3.0" DB=mysql DB_USER=root
+  - DOCTRINE_COMMON_VERSION="~2.4.0" DB=mysql DB_USER=root
+  - DOCTRINE_COMMON_VERSION="dev-master" DB=mysql DB_USER=root
   - DOCTRINE_COMMON_VERSION="~2.2.0" DB=pgsql
   - DOCTRINE_COMMON_VERSION="~2.3.0" DB=pgsql
   - DOCTRINE_COMMON_VERSION="~2.4.0" DB=pgsql
@@ -22,7 +22,7 @@ before_script:
   - sh -c "if [ '$DB' = 'pgsql' ]; then sudo -u postgres psql orm_behaviors_test -c 'create extension cube'; fi"
   - sh -c "if [ '$DB' = 'pgsql' ]; then sudo -u postgres psql orm_behaviors_test -c 'create extension earthdistance'; fi"
 
-  - sh -c "if [ '$DB' = 'mysql' ]; then mysql -e 'create database IF NOT EXISTS orm_behaviors_test'; fi"
+  - sh -c "if [ '$DB' = 'mysql' ]; then mysql -e 'create database IF NOT EXISTS orm_behaviors_test' -u$DB_USER; fi"
 
   - composer require doctrine/common:${DOCTRINE_COMMON_VERSION}
 
