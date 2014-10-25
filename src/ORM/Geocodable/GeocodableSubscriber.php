@@ -47,8 +47,12 @@ class GeocodableSubscriber extends AbstractSubscriber
      * @param                                                 $geocodableTrait
      * @param callable                                        $geolocationCallable
      */
-    public function __construct(ClassAnalyzer $classAnalyzer, $isRecursive, $geocodableTrait, callable $geolocationCallable = null)
-    {
+    public function __construct(
+        ClassAnalyzer $classAnalyzer,
+        $isRecursive,
+        $geocodableTrait,
+        callable $geolocationCallable = null
+    ) {
         parent::__construct($classAnalyzer, $isRecursive);
 
         $this->geocodableTrait = $geocodableTrait;
@@ -78,30 +82,31 @@ class GeocodableSubscriber extends AbstractSubscriber
 
             // skip non-postgres platforms
             if (!$con->getDatabasePlatform() instanceof PostgreSqlPlatform &&
-                !$con->getDatabasePlatform() instanceof MySqlPlatform)
-            {
+                !$con->getDatabasePlatform() instanceof MySqlPlatform
+            ) {
                 return;
             }
 
             // skip platforms with registerd stuff
-            if ($con->getDatabasePlatform()->hasDoctrineTypeMappingFor('point')) {
-                return;
+            if (!$con->getDatabasePlatform()->hasDoctrineTypeMappingFor('point')) {
+
+                $con->getDatabasePlatform()->registerDoctrineTypeMapping('point', 'point');
+
+                if ($con->getDatabasePlatform() instanceof PostgreSqlPlatform) {
+                    $em->getConfiguration()->addCustomNumericFunction(
+                        'DISTANCE',
+                        'Knp\DoctrineBehaviors\ORM\Geocodable\Query\AST\Functions\DistanceFunction'
+                    );
+                }
             }
 
-            $con->getDatabasePlatform()->registerDoctrineTypeMapping('point', 'point');
-
-            if ($con->getDatabasePlatform() instanceof PostgreSqlPlatform) {
-                $em->getConfiguration()->addCustomNumericFunction(
-                    'DISTANCE',
-                    'Knp\DoctrineBehaviors\ORM\Geocodable\Query\AST\Functions\DistanceFunction'
-                );
-            }
-
-            $classMetadata->mapField([
-                'fieldName'  => 'location',
-                'type'       => 'point',
-                'nullable'   => true
-            ]);
+            $classMetadata->mapField(
+                [
+                    'fieldName' => 'location',
+                    'type'      => 'point',
+                    'nullable'  => true
+                ]
+            );
         }
     }
 
@@ -122,9 +127,12 @@ class GeocodableSubscriber extends AbstractSubscriber
                 $entity->setLocation($this->getLocation($entity));
 
                 $uow->propertyChanged($entity, 'location', $oldValue, $entity->getLocation());
-                $uow->scheduleExtraUpdate($entity, [
-                    'location' => [$oldValue, $entity->getLocation()],
-                ]);
+                $uow->scheduleExtraUpdate(
+                    $entity,
+                    [
+                        'location' => [$oldValue, $entity->getLocation()],
+                    ]
+                );
             }
         }
     }
@@ -162,7 +170,11 @@ class GeocodableSubscriber extends AbstractSubscriber
      */
     private function isGeocodable(ClassMetadata $classMetadata)
     {
-        return $this->getClassAnalyzer()->hasTrait($classMetadata->reflClass, $this->geocodableTrait, $this->isRecursive);
+        return $this->getClassAnalyzer()->hasTrait(
+            $classMetadata->reflClass,
+            $this->geocodableTrait,
+            $this->isRecursive
+        );
     }
 
     public function getSubscribedEvents()
